@@ -17,7 +17,7 @@ const getUsers = async (req, res) => {
         let filteredUsers = [];
         const users = await Users.find();
         for(user of users){
-            filteredUsers.push({username: user.username, _id: user._id});
+            filteredUsers.push({_id: user._id, username: user.username});
         }
 
         return res.status(200).json(filteredUsers);
@@ -56,4 +56,42 @@ const addExercises = async (req, res) => {
     }
 }
 
-module.exports = { addUsers, getUsers, addExercises };
+const getLogs = async (req, res) => {
+    try {
+        const id = req.params._id;
+        const {from, to, limit} = req.query;
+
+        const user = await Users.findById(id);
+        let filteredLogs = [];
+        
+        if(!user){
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        if(from && to){
+
+            const fromDate = new Date(from);
+            const toDate = new Date(to);
+
+            for(log of user.logs){
+                const dateLog = new Date(log);
+
+                if(dateLog >= fromDate && dateLog <= toDate){
+                    filteredLogs.push(log);
+                }
+
+                if(filteredLogs.length === parseInt(limit)) break;
+
+            }
+        }
+
+
+        return res.status(200).json({_id: id, username: user.username, count: user.count, log: filteredLogs.length > 0 ? filteredLogs : user.logs});
+        
+    } catch (err) {
+        console.log(err);
+        return res.status(500).json({error: "Internal Server Error"});
+    }
+}
+
+module.exports = { addUsers, getUsers, addExercises, getLogs};
