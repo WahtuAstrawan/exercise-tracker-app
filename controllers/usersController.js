@@ -48,7 +48,7 @@ const addExercises = async (req, res) => {
         user.count += 1;
         await user.save();
 
-        return res.status(200).json({_id: id, username: user.username, date, duration, description});
+        return res.status(200).json({_id: id, username: user.username, date, duration: parseInt(duration), description});
 
     } catch (err) {
         console.log(err);
@@ -59,39 +59,60 @@ const addExercises = async (req, res) => {
 const getLogs = async (req, res) => {
     try {
         const id = req.params._id;
-        const {from, to, limit} = req.query;
+        const from = req.query.from || new Date(0);
+        const to = req.query.to || new Date(Date.now());
+        const limit = Number(req.query.limit) || 0;
 
         const user = await Users.findById(id);
+        let originalLogs = [];
+
+        for(const log of user.logs){
+            originalLogs.push({
+                description: log.description,
+                duration: log.duration,
+                date: log.date
+            });
+        }
+
         let filteredLogs = [];
-        
-        if(!user){
+
+        if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
 
-        if(from && to){
+        if (from || to) {
+            const fromDate = from ? new Date(`${from}T00:00:00Z`) : new Date(0);
+            const toDate = to ? new Date(`${to}T23:59:59Z`) : new Date();
 
-            const fromDate = new Date(from);
-            const toDate = new Date(to);
+            for (const log of originalLogs) {
+                const dateLog = new Date(log.date);
 
-            for(log of user.logs){
-                const dateLog = new Date(log);
-
-                if(dateLog >= fromDate && dateLog <= toDate){
+                if (dateLog >= fromDate && dateLog <= toDate) {
                     filteredLogs.push(log);
                 }
+            }
+        }
+        
+        if(limit !== 0) {
+            originalLogs = originalLogs.slice(0, limit);
 
-                if(filteredLogs.length === parseInt(limit)) break;
-
+            if(filteredLogs.length > 0){
+                filteredLogs = filteredLogs.slice(0, limit);
             }
         }
 
+        return res.status(200).json({
+            _id: id,
+            username: user.username,
+            count: user.count,
+            log: filteredLogs.length > 0 ? filteredLogs : originalLogs,
+        });
 
-        return res.status(200).json({_id: id, username: user.username, count: user.count, log: filteredLogs.length > 0 ? filteredLogs : user.logs});
-        
     } catch (err) {
-        console.log(err);
-        return res.status(500).json({error: "Internal Server Error"});
+        console.error(err);
+        return res.status(500).json({ error: "Internal Server Error" });
     }
-}
+};
+
 
 module.exports = { addUsers, getUsers, addExercises, getLogs};
