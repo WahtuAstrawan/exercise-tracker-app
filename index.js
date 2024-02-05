@@ -4,6 +4,7 @@ const cors = require('cors')
 require('dotenv').config()
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
+const rateLimiter = require("./config/rateLimiter");
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
@@ -19,6 +20,7 @@ app.use(express.static('public'))
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html')
 });
+app.use(rateLimiter);
 
 const listener = app.listen(process.env.PORT || 3000, () => {
   console.log('Your app is listening on port ' + listener.address().port)
@@ -27,3 +29,5 @@ const listener = app.listen(process.env.PORT || 3000, () => {
 const userRouter = require('./routes/users');
 
 app.use('/api/users', userRouter);
+
+module.exports = app;
